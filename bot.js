@@ -1,8 +1,8 @@
 const TelegramBot = require('node-telegram-bot-api');
 const { google } = require('googleapis');
 
-const TOKEN = "8764517873:AAF0y-oRDhZazwwYf_cdMshA3A1dYwkRisY";
-const SPREADSHEET_ID = "1V3X2pQr2h_LtIe2Z9J6yuD3t-gjZMcTIC4wCMxPqh-o";
+const TOKEN = process.env.BOT_TOKEN;
+const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
 const SHEET_NAME = "DATA";
 
 const bot = new TelegramBot(TOKEN, { polling: true });
@@ -15,14 +15,11 @@ let userData = {};
 // ========================
 
 const auth = new google.auth.GoogleAuth({
-  keyFile: "credentials.json",
+  credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS), // JSON string diubah menjadi object
   scopes: ["https://www.googleapis.com/auth/spreadsheets"]
 });
 
-const sheets = google.sheets({
-  version: "v4",
-  auth
-});
+const sheets = google.sheets({ version: "v4", auth });
 
 // ========================
 // START

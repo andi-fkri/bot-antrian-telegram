@@ -2,7 +2,7 @@
 
 Q-Express GraPARI Bot adalah bot Telegram untuk mengelola sistem antrian layanan GraPARI secara sederhana menggunakan Google Sheets sebagai database.
 
-Bot berjalan menggunakan Node.js, Telegram Bot API, dan Google Apps Script Webhook, serta dapat di-deploy dengan mudah menggunakan Railway.
+Bot berjalan menggunakan Node.js, Telegram Bot API, serta dapat di-deploy dengan mudah menggunakan Railway.
 
 A. Fitur :
 

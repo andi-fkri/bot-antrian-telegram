@@ -177,7 +177,7 @@ bot.on("message", async (msg) => {
 // ========================
 bot.onText(/\/broadcast(?:\s+([\s\S]+))?/, async (msg, match) => {
   const chatId = msg.chat.id;
-  const adminIds = [111111111]; // ganti dengan chatId admin
+  const adminIds = [816293780]; // ganti dengan chatId admin
   if (!adminIds.includes(chatId)) {
     bot.sendMessage(chatId, "❌ Kamu tidak punya izin untuk broadcast.");
     return;

@@ -196,7 +196,7 @@ bot.on("message", async(msg)=>{
       `👤 Nama : ${nama}\n`+
       `📞 HP : ${hp}\n`+
       `🛠 Layanan : ${layanan}\n`+
-      `⚠️ Keluhan : ${keluhan},
+      `⚠️ Keluhan : ${keluhan}`,
       {parse_mode:"Markdown"}
     );
 

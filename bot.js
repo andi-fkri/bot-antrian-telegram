@@ -173,6 +173,32 @@ bot.on("message", async (msg) => {
 });
 
 // ========================
+// BROADCAST MANUAL / ADMIN
+// ========================
+bot.onText(/\/broadcast(?:\s+([\s\S]+))?/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const adminIds = [111111111]; // ganti dengan chatId admin
+  if (!adminIds.includes(chatId)) {
+    bot.sendMessage(chatId, "❌ Kamu tidak punya izin untuk broadcast.");
+    return;
+  }
+
+  const textToBroadcast = match[1];
+  if (!textToBroadcast || textToBroadcast.trim() === "") {
+    bot.sendMessage(chatId, "ℹ️ Tulis pesan setelah perintah /broadcast.\nContoh:\n/broadcast 🔔 Info:\n• Point 1\n• Point 2");
+    return;
+  }
+
+  try {
+    await broadcastToAll(textToBroadcast);
+    bot.sendMessage(chatId, "✅ Broadcast manual berhasil dikirim ke semua user.");
+  } catch (e) {
+    console.error("❌ Gagal broadcast manual:", e);
+    bot.sendMessage(chatId, "❌ Terjadi kesalahan saat broadcast.");
+  }
+});
+
+// ========================
 // GENERATE NOMOR ANTRIAN
 // ========================
 

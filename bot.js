@@ -207,22 +207,38 @@ async function showQueue(chatId){
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${SHEET_NAME}!C2:G`
+    range: `${SHEET_NAME}!B2:G`
   });
 
-  const rows = res.data.values;
+  const rows = res.data.values || [];
 
-  if(!rows){
-    bot.sendMessage(chatId,"📭 Belum ada antrian.");
+  const today = new Date().toLocaleDateString("id-ID");
+
+  // filter hanya antrian hari ini
+  const todayRows = rows.filter(r => r[0] === today);
+
+  if(todayRows.length === 0){
+
+    let msg = `📭 *Belum ada antrian hari ini*\n`;
+    msg += `📅 ${today}\n\n`;
+    msg += `━━━━━━━━━━━━━━━\n`;
+    msg += `ℹ️ *Petunjuk:*\n`;
+    msg += `• Ketik */start* untuk kembali ke menu utama`;
+
+    bot.sendMessage(chatId,msg,{parse_mode:"Markdown"});
     return;
   }
 
-  let msg = "📊 *Daftar Antrian*\n\n";
+  let msg = `📊 *Daftar Antrian Hari Ini*\n`;
+  msg += `📅 ${today}\n\n`;
 
-  rows.forEach(r=>{
-    msg += `🎟 ${r[0]} - ${r[1]} (${r[3]})\n`;
+  todayRows.forEach(r=>{
+    msg += `🎟 ${r[1]} - ${r[2]} (${r[4]})\n`;
   });
 
-  bot.sendMessage(chatId,msg,{parse_mode:"Markdown"});
+  msg += `\n━━━━━━━━━━━━━━━\n`;
+  msg += `ℹ️ *Petunjuk:*\n`;
+  msg += `• Ketik */start* untuk kembali ke menu utama`;
 
+  bot.sendMessage(chatId,msg,{parse_mode:"Markdown"});
 }

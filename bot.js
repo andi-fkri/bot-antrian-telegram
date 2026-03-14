@@ -355,12 +355,13 @@ Belum ada antrian hari ini.`;
     msg += "-----------------------------\n";
     msg += `Total Pelanggan : ${total}\n`;
     msg += "-----------------------------\n";
-    msg += `📱Telkomsel PraBayar : ${stat.prabayar}\n`;
-    msg += `📞Telkomsel Halo     : ${stat.halo}\n`;
-    msg += `📡Telkomsel Orbit    : ${stat.indihome}\n`;
-    msg += `🌐IndiHome           : ${stat.orbit}\n`;
-    msg += `🆓by.U               : ${stat.byu}\n`;
-
+    msg += `Telkomsel PraBayar : ${stat.prabayar}\n`;
+    msg += `Telkomsel Halo     : ${stat.halo}\n`;
+    msg += `Telkomsel Orbit    : ${stat.indihome}\n`;
+    msg += `IndiHome           : ${stat.orbit}\n`;
+    msg += `by.U               : ${stat.byu}\n`;
+    msg += "```\n\n";
+    
     msg += `\n━━━━━━━━━━━━━━━━━━\n`;
     msg += `Terima kasih telah menggunakan\n`;
     msg += `*Q-Express GraPARI Bot*`;
@@ -407,7 +408,7 @@ setInterval(async () => {
   }
 
   // Sabtu 12:30
-  if (day === 6 && hour === 17 && minute === 00 && lastReportDate !== today) {
+  if (day === 6 && hour === 17 && minute === 12 && lastReportDate !== today) {
     await broadcastDailyReport();
     lastReportDate = today;
   }

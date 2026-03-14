@@ -399,14 +399,14 @@ setInterval(async () => {
   const hour = date.getHours();
   const minute = date.getMinutes();
 
-  // Senin-Jumat 18:00
-  if (day >= 1 && day <= 5 && hour === 18 && minute === 0 && lastReportDate !== today) {
+  // Senin-Jumat 17:05
+  if (day >= 1 && day <= 5 && hour === 17 && minute === 5 && lastReportDate !== today) {
     await broadcastDailyReport();
     lastReportDate = today;
   }
 
-  // Sabtu 12:30
-  if (day === 6 && hour === 17 && minute === 35 && lastReportDate !== today) {
+  // Sabtu 12:05
+  if (day === 6 && hour === 12 && minute === 5 && lastReportDate !== today) {
     await broadcastDailyReport();
     lastReportDate = today;
   }

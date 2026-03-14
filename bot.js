@@ -352,7 +352,7 @@ Belum ada antrian hari ini.`;
 
     msg += "STATISTIK LAYANAN\n";
     msg += "-----------------------------\n";
-    msg += `Total Pelanggan : ${total}\n`;
+    msg += `*Total Pelanggan : ${total}*\n`;
     msg += "-----------------------------\n";
     msg += `📱 Telkomsel PraBayar : *${stat.prabayar}*\n`;
     msg += `📞 Telkomsel Halo : *${stat.halo}*\n`;
@@ -406,7 +406,7 @@ setInterval(async () => {
   }
 
   // Sabtu 12:30
-  if (day === 6 && hour === 17 && minute === 30 && lastReportDate !== today) {
+  if (day === 6 && hour === 17 && minute === 35 && lastReportDate !== today) {
     await broadcastDailyReport();
     lastReportDate = today;
   }

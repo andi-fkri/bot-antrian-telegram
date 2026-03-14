@@ -305,38 +305,74 @@ async function showQueue(chatId) {
 
 async function generateProfessionalReport() {
   try {
-    const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${SHEET_NAME}!B2:H` });
+
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SHEET_NAME}!B2:H`
+    });
+
     const rows = res.data.values || [];
     const today = getWITADate();
+
     const todayRows = rows.filter(r => r[0] === today);
 
-    if (todayRows.length === 0) return `📊 REKAP ANTRIAN\n📅 ${today}\nTidak ada antrian hari ini.`;
+    if (todayRows.length === 0) {
+      return `📊 *REKAP ANTRIAN GRAPARI*
+📅 ${today}
 
-    let stat = { prabayar: 0, halo: 0, indihome: 0, orbit: 0, byu: 0 };
+Belum ada antrian hari ini.`;
+    }
+
+    let stat = {
+      prabayar: 0,
+      halo: 0,
+      indihome: 0,
+      orbit: 0,
+      byu: 0
+    };
+
     todayRows.forEach(r => {
-      const layanan = (r[5] || "").toLowerCase();
+
+      const layanan = (r[4] || "").toLowerCase();
+
       if (layanan.includes("prabayar")) stat.prabayar++;
       if (layanan.includes("halo")) stat.halo++;
       if (layanan.includes("indihome")) stat.indihome++;
       if (layanan.includes("orbit")) stat.orbit++;
       if (layanan.includes("by.u") || layanan.includes("byu")) stat.byu++;
+
     });
 
     const total = todayRows.length;
-    let msg = `📊 *REKAP ANTRIAN GRAPARI*\n📅 ${today}\n━━━━━━━━━━━━━━━━\n`;
-    msg += `👥 *Total Pelanggan*: ${total} Orang\n\n📈 *Statistik Layanan*\n`;
+
+    let msg = "";
+    msg += `📊 *REKAP ANTRIAN GRAPARI*\n`;
+    msg += `📅 ${today}\n`;
+    msg += `━━━━━━━━━━━━━━━━━━\n\n`;
+
+    msg += `👥 *Total Pelanggan* : ${total}\n\n`;
+
+    msg += `📈 *Statistik Layanan*\n\n`;
+
     msg += `📱 Telkomsel PraBayar : ${stat.prabayar}\n`;
-    msg += `📞 Telkomsel Halo : ${stat.halo}\n`;
-    msg += `🌐 IndiHome : ${stat.indihome}\n`;
-    msg += `📡 Telkomsel Orbit : ${stat.orbit}\n`;
-    msg += `🆓 by.U : ${stat.byu}\n`;
-    msg += "━━━━━━━━━━━━━━━━\nTerima kasih telah menggunakan *Sistem Antrian Digital Grapari*";
+    msg += `📞 Telkomsel Halo     : ${stat.halo}\n`;
+    msg += `🌐 IndiHome           : ${stat.indihome}\n`;
+    msg += `📡 Telkomsel Orbit    : ${stat.orbit}\n`;
+    msg += `🆓 by.U               : ${stat.byu}\n`;
+
+    msg += `\n━━━━━━━━━━━━━━━━━━\n`;
+    msg += `Terima kasih telah menggunakan\n`;
+    msg += `*Q-Express GraPARI Bot*`;
 
     return msg;
 
-  } catch (e) { console.error("Gagal generate report:", e); return "❌ Terjadi kesalahan saat membuat rekap."; }
-}
+  } catch (e) {
 
+    console.error("Gagal generate report:", e);
+    return "❌ Terjadi kesalahan saat membuat rekap.";
+
+  }
+}
 async function broadcastDailyReport() {
   try {
     const report = await generateProfessionalReport();
@@ -370,7 +406,7 @@ setInterval(async () => {
   }
 
   // Sabtu 12:30
-  if (day === 6 && hour === 12 && minute === 30 && lastReportDate !== today) {
+  if (day === 6 && hour === 16 && minute === 30 && lastReportDate !== today) {
     await broadcastDailyReport();
     lastReportDate = today;
   }

@@ -381,7 +381,7 @@ async function broadcastDailyReport() {
     const users = [...new Set((res.data.values || []).map(r => r[0]))];
     for (const chatId of users) {
       try { await bot.sendMessage(chatId, report, { parse_mode: "Markdown" }); }
-      catch { console.log("Gagal kirim ke", chatId, e.response?.body || e.message); }
+      catch (e) { console.log("Gagal kirim ke", chatId, e.response?.body || e.message); }
     }
   } catch (e) { console.error("Gagal broadcast:", e); }
 }
@@ -407,7 +407,7 @@ setInterval(async () => {
   }
 
   // Sabtu 12:30
-  if (day === 6 && hour === 16 && minute === 55 && lastReportDate !== today) {
+  if (day === 6 && hour === 17 && minute === 00 && lastReportDate !== today) {
     await broadcastDailyReport();
     lastReportDate = today;
   }

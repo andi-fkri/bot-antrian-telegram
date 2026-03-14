@@ -350,15 +350,16 @@ Belum ada antrian hari ini.`;
     msg += `📅 ${today}\n`;
     msg += `━━━━━━━━━━━━━━━━━━\n\n`;
 
-    msg += `👥 *Total Pelanggan* : ${total}\n\n`;
-
-    msg += `📈 *Statistik Layanan*\n\n`;
-
-    msg += `📱 Telkomsel PraBayar : ${stat.prabayar}\n`;
-    msg += `📞 Telkomsel Halo     : ${stat.halo}\n`;
-    msg += `🌐 IndiHome           : ${stat.indihome}\n`;
-    msg += `📡 Telkomsel Orbit    : ${stat.orbit}\n`;
-    msg += `🆓 by.U               : ${stat.byu}\n`;
+    msg += "```\n";
+    msg += "STATISTIK LAYANAN\n";
+    msg += "-----------------------------\n";
+    msg += `Total Pelanggan : ${total}\n`;
+    msg += "-----------------------------\n";
+    msg += `📱Telkomsel PraBayar : ${stat.prabayar}\n`;
+    msg += `📞Telkomsel Halo     : ${stat.halo}\n`;
+    msg += `📡Telkomsel Orbit    : ${stat.indihome}\n`;
+    msg += `🌐IndiHome           : ${stat.orbit}\n`;
+    msg += `🆓by.U               : ${stat.byu}\n`;
 
     msg += `\n━━━━━━━━━━━━━━━━━━\n`;
     msg += `Terima kasih telah menggunakan\n`;
@@ -406,7 +407,7 @@ setInterval(async () => {
   }
 
   // Sabtu 12:30
-  if (day === 6 && hour === 16 && minute === 30 && lastReportDate !== today) {
+  if (day === 6 && hour === 16 && minute === 44 && lastReportDate !== today) {
     await broadcastDailyReport();
     lastReportDate = today;
   }

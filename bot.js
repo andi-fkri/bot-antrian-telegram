@@ -3,8 +3,6 @@ const { google } = require('googleapis');
 
 const TOKEN = process.env.BOT_TOKEN;
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
-const SHEET_NAME = "DATA";
-const USER_SHEET = "USERS";
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 
@@ -13,164 +11,399 @@ let userData = {};
 let lastResetDate = getWITADate();
 let lastReportDate = "";
 
-// ========================
-// GOOGLE SHEETS AUTH
-// ========================
+const SHEET_MANADO = "MANADO";
+const SHEET_TERNATE = "TERNATE";
+const USER_SHEET = "USERS";
+
+const ADMIN_IDS = [816293780];
+
+// ================= GOOGLE =================
 
 const auth = new google.auth.GoogleAuth({
-  credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
+  keyFile: "credentials.json",
   scopes: ["https://www.googleapis.com/auth/spreadsheets"]
 });
 
 const sheets = google.sheets({ version: "v4", auth });
 
-// ========================
-// WAKTU WITA
-// ========================
+// ================= WAKTU =================
 
-function getWITATime() {
-  return new Date().toLocaleString("id-ID", { timeZone: "Asia/Makassar", hour12: false });
+function getWITATime(){
+
+  const date = new Date(
+    new Date().toLocaleString("en-US",{timeZone:"Asia/Makassar"})
+  );
+
+  const day = String(date.getDate()).padStart(2,"0");
+  const month = String(date.getMonth()+1).padStart(2,"0");
+  const year = date.getFullYear();
+
+  const hour = String(date.getHours()).padStart(2,"0");
+  const minute = String(date.getMinutes()).padStart(2,"0");
+  const second = String(date.getSeconds()).padStart(2,"0");
+
+  return `${day}/${month}/${year} ${hour}:${minute}:${second}`;
 }
 
-function getWITADate() {
-  return new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Makassar" });
+function getWITADate(){
+
+  const date = new Date(
+    new Date().toLocaleString("en-US",{timeZone:"Asia/Makassar"})
+  );
+
+  const day = String(date.getDate()).padStart(2,"0");
+  const month = String(date.getMonth()+1).padStart(2,"0");
+  const year = date.getFullYear();
+
+  return `${day}/${month}/${year}`;
 }
 
-// ========================
-// RESET HARIAN
-// ========================
+// ================= RESET =================
 
 function checkDailyReset() {
   const today = getWITADate();
   if (today !== lastResetDate) {
     lastResetDate = today;
-    console.log(`🔄 Reset harian WITA - tanggal baru: ${today}`);
     userStep = {};
     userData = {};
     lastReportDate = "";
+    console.log("Reset harian:", today);
   }
 }
 
-// ========================
-// SIMPAN USER UNTUK BROADCAST
-// ========================
+// ================= USER =================
 
-async function saveUser(chatId) {
-  try {
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${USER_SHEET}!A2:A`
+async function saveUser(chatId, grapari) {
+
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${USER_SHEET}!A2:B`
+  });
+
+  const rows = res.data.values || [];
+
+  const exist=rows.find(r=>r[0]==chatId);
+
+  if(!exist){
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId:SPREADSHEET_ID,
+      range:USER_SHEET,
+      valueInputOption:"USER_ENTERED",
+      requestBody:{values:[[chatId,grapari]]}
     });
-    const rows = res.data.values || [];
-    if (!rows.some(r => r[0] == chatId)) {
-      await sheets.spreadsheets.values.append({
-        spreadsheetId: SPREADSHEET_ID,
-        range: USER_SHEET,
-        valueInputOption: "USER_ENTERED",
-        requestBody: { values: [[chatId]] }
-      });
-    }
-  } catch (e) {
-    console.error("Gagal simpan user:", e);
+
   }
+
 }
 
-// ========================
-// START
-// ========================
+// ================= START =================
 
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
-  await saveUser(chatId);
+  delete userStep[chatId];
+  delete userData[chatId];
   showMenu(chatId);
+
 });
 
-// ========================
-// MESSAGE HANDLER
-// ========================
+// ================= MESSAGE =================
 
 bot.on("message", async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
-  if (!text) return;
+
+  if (!text || text.startsWith("/")) return;
 
   const step = userStep[chatId];
 
   if (text === "📝 Buat Antrian") {
-    userStep[chatId] = "nama";
-    bot.sendMessage(chatId, "👤 Masukkan *Nama Pelanggan* :", { parse_mode: "Markdown" });
+    userStep[chatId] = "grapari";
+    showGrapari(chatId,"📍 Pilih Grapari");
     return;
   }
 
   if (text === "📊 Lihat Antrian") {
-    showQueue(chatId);
+    userStep[chatId] = "lihat";
+    showGrapari(chatId,"🔍 Pilih Grapari");
     return;
+  }
+
+  if (!step) return;
+
+  if (step === "grapari") {
+    userData[chatId] = { grapari:text };
+    await saveUser(chatId,text);
+    userStep[chatId] = "nama";
+    bot.sendMessage(chatId,"👤 Masukkan *Nama Pelanggan* :",{parse_mode:"Markdown"});
+    return;
+
   }
 
   if (step === "nama") {
-    userData[chatId] = { nama: text };
+    userData[chatId].nama = text;
     userStep[chatId] = "hp";
-    bot.sendMessage(chatId, "📞 Masukkan *Nomor HP* :", { parse_mode: "Markdown" });
+    bot.sendMessage(chatId,"📞 Masukkan *Nomor HP* :",{parse_mode:"Markdown"});
     return;
+
   }
 
   if (step === "hp") {
+    const phoneRegex = /^[0-9]{9,14}$/;
+    if (!phoneRegex.test(text)) {
+      bot.sendMessage(chatId,"⚠️ Nomor HP tidak valid");
+      return;
+    }
+
     userData[chatId].hp = text;
     userStep[chatId] = "layanan";
     showService(chatId);
     return;
+
   }
 
   if (step === "layanan") {
     userData[chatId].layanan = text;
     userStep[chatId] = "keluhan";
-    bot.sendMessage(chatId, "⚠️ Masukkan *Keluhan* :", { parse_mode: "Markdown" });
+    bot.sendMessage(chatId,"⚠️ Masukkan *Keluhan* :",{parse_mode:"Markdown"});
     return;
   }
 
   if (step === "keluhan") {
     userData[chatId].keluhan = text;
     userStep[chatId] = "inputer";
-    bot.sendMessage(chatId, "👨‍💻 Masukkan *Nama Inputer* :", { parse_mode: "Markdown" });
+    bot.sendMessage(chatId,"👨‍💻 Masukkan *Nama Inputer* :",{parse_mode:"Markdown"});
     return;
   }
 
   if (step === "inputer") {
     userData[chatId].inputer = text;
+    await saveQueue(chatId);
+  }
 
-    const { nama, hp, layanan, keluhan, inputer } = userData[chatId];
-    const nomor = await generateQueueNumber();
-    const timestamp = getWITATime();
-    const tanggal = getWITADate();
+  if (step === "lihat") {
+    await showQueue(chatId,text);
+    delete userStep[chatId];
+  }
 
-    try {
-      await sheets.spreadsheets.values.append({
-        spreadsheetId: SPREADSHEET_ID,
-        range: SHEET_NAME,
-        valueInputOption: "USER_ENTERED",
-        requestBody: { values: [[timestamp, tanggal, nomor, nama, hp, layanan, keluhan, inputer]] }
-      });
+});
 
-      bot.sendMessage(chatId,
-        `✅ *Antrian Berhasil Dibuat*\n\n` +
-        `🎟 Nomor : *${nomor}*\n` +
-        `👤 Nama : ${nama}\n` +
-        `📞 HP : ${hp}\n` +
-        `🛠 Layanan : ${layanan}\n` +
-        `⚠️ Keluhan : ${keluhan}`,
-        { parse_mode: "Markdown" }
-      );
+// ================= SHEET =================
 
-    } catch (e) {
-      console.error("Gagal menyimpan antrian:", e);
-      bot.sendMessage(chatId, "❌ Terjadi kesalahan saat menyimpan antrian.");
+function getSheet(grapari){
+
+  if(grapari === "Grapari Manado") return SHEET_MANADO;
+  if(grapari === "Grapari Ternate") return SHEET_TERNATE;
+
+}
+
+// ================= PREFIX =================
+
+function getPrefix(grapari){
+
+  if(grapari === "Grapari Manado") return "MDO";
+  if(grapari === "Grapari Ternate") return "TRN";
+
+}
+
+// ================= NOMOR =================
+
+async function generateQueueNumber(grapari){
+
+  const sheet = getSheet(grapari);
+  const prefix = getPrefix(grapari);
+  const today = getWITADate();
+
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId:SPREADSHEET_ID,
+    range:`${sheet}!B2:C`
+  });
+
+  const rows = res.data.values || [];
+
+  const todayRows = rows.filter(r=>{
+    const t = (r[0] || "").toString().trim();
+    return t === today;
+  });
+
+  if(todayRows.length === 0){
+    return prefix+"001";
+  }
+
+  const numbers = todayRows.map(r=>{
+    const num = (r[1] || "").toString().replace(prefix,"").trim();
+    return parseInt(num) || 0;
+  });
+
+  const last = Math.max(...numbers);
+
+  return prefix + String(last+1).padStart(3,"0");
+
+}
+
+
+// ================= SAVE =================
+
+async function saveQueue(chatId){
+
+  const { grapari,nama,hp,layanan,keluhan,inputer } = userData[chatId];
+  const sheet = getSheet(grapari);
+  const nomor = await generateQueueNumber(grapari);
+  const timestamp = getWITATime();
+  const tanggal = getWITADate();
+
+  try {
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SPREADSHEET_ID,
+      range: sheet,
+      valueInputOption: "USER_ENTERED",
+      requestBody:{
+        values:[[timestamp,tanggal,nomor,grapari,nama,hp,layanan,keluhan,inputer]]
+      }
+    });
+
+    await bot.sendMessage(
+      chatId,
+      `✅ *Antrian Berhasil Dibuat*\n\n` +
+      `🎟 Nomor : *${nomor}*\n` +
+      `👤 Nama : ${nama}\n` +
+      `📞 HP : ${hp}\n` +
+      `🛠 Layanan : ${layanan}\n` +
+      `⚠️ Keluhan : ${keluhan}`,
+      { parse_mode: "Markdown" }
+    );
+
+  } catch (e) {
+
+    console.error("Gagal menyimpan antrian:", e);
+    bot.sendMessage(chatId,"❌ Terjadi kesalahan saat menyimpan antrian.");
+    return;
+
+  }
+
+  // 🔹 reset step user
+  delete userStep[chatId];
+  delete userData[chatId];
+
+  // 🔹 kembali ke menu utama
+  showMenu(chatId);
+
+}
+
+// ================= SHOW =================
+
+async function showQueue(chatId,grapari){
+  try{
+  const sheet = getSheet(grapari);
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId:SPREADSHEET_ID,
+    range:`${sheet}!B2:H`
+  });
+
+  const rows = res.data.values || [];
+  const today = getWITADate();
+  const todayRows = rows.filter(r=>{
+  const t = (r[0] || "").toString().trim();
+  return t === today;
+  });
+  if(todayRows.length===0){
+    let msg = `📭 *Belum ada antrian hari ini*\n`;
+    msg += `📅 ${grapari}\n\n`;
+    msg += `📅 ${today}\n\n`;
+    msg += `━━━━━━━━━━━━━━━\n`;
+    msg += `ℹ️ *Petunjuk:*\n`;
+    msg += `• Ketik */start* untuk kembali ke menu utama.`;
+  return bot.sendMessage(chatId, msg, { parse_mode: "Markdown" });
+  }
+
+  todayRows.sort((a,b)=>{
+  const na = parseInt((a[1] || "").replace(/\D/g,"")) || 0;
+  const nb = parseInt((b[1] || "").replace(/\D/g,"")) || 0;
+  return na-nb;
+  });
+
+    let msg = `📊 ANTRIAN ${grapari}\n📅 ${today}\n\n`;
+
+    todayRows.forEach(r => {
+      msg += `🎟 ${r[1]} - ${r[3]} (${r[5]})\n`;
+    });
+
+    msg += `\n━━━━━━━━━━━━━━━\n`;
+    msg += `ℹ️ *Petunjuk:*\n`;
+    msg += `• Ketik /start untuk kembali ke menu utama.`;
+
+    bot.sendMessage(chatId, msg, { parse_mode: "Markdown" });
+
+
+  } catch (err) {
+
+    console.log(err);
+    bot.sendMessage(chatId, "❌ Gagal memuat antrian");
+
+  }
+}
+
+// ================= MENU =================
+
+function showMenu(chatId){
+
+  bot.sendMessage(chatId, "📱 *Q-Express GraPARI Bot*\n\nPilih Menu:", {
+
+    parse_mode:"Markdown",
+
+    reply_markup:{
+      keyboard:[
+        ["📝 Buat Antrian"],
+        ["📊 Lihat Antrian"]
+      ],
+      resize_keyboard:true,
+      one_time_keyboard:true
     }
 
-    delete userStep[chatId];
-    delete userData[chatId];
-    showMenu(chatId);
-  }
-});
+  });
+
+}
+
+// ================= GRAPARI =================
+
+function showGrapari(chatId,text){
+
+  bot.sendMessage(chatId,text,{
+
+    reply_markup:{
+      keyboard:[
+        ["Grapari Manado"],
+        ["Grapari Ternate"]
+      ],
+      resize_keyboard:true,
+      one_time_keyboard:true
+    }
+
+  });
+
+}
+
+// ================= SERVICE =================
+
+function showService(chatId){
+
+  bot.sendMessage(chatId,"🛠 Pilih Layanan :",{
+
+    reply_markup:{
+      keyboard:[
+        ["📱 Telkomsel PraBayar"],
+        ["📞 Telkomsel Halo"],
+        ["📡 Telkomsel Orbit"],
+        ["🌐 IndiHome"],
+        ["🆓 by.U"]
+      ],
+      resize_keyboard:true
+    }
+
+  });
+
+}
 
 // ========================
 // BROADCAST MANUAL / ADMIN
@@ -199,125 +432,28 @@ bot.onText(/\/broadcast(?:\s+([\s\S]+))?/, async (msg, match) => {
 });
 
 // ========================
-// GENERATE NOMOR ANTRIAN
-// ========================
-
-async function generateQueueNumber() {
-  checkDailyReset();
-  try {
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!B2:C`
-    });
-    const rows = res.data.values || [];
-    const today = getWITADate();
-    const todayRows = rows.filter(r => r[0] === today);
-
-    if (todayRows.length === 0) return "Q001";
-
-    const numbers = todayRows.map(r => {
-      const n = parseInt((r[1] || "").replace("Q", ""));
-      return isNaN(n) ? 0 : n;
-    });
-
-    const lastNum = Math.max(...numbers);
-    return "Q" + String(lastNum + 1).padStart(3, "0");
-
-  } catch (e) {
-    console.error("Gagal generate nomor antrian:", e);
-    return "Q001";
-  }
-}
-
-// ========================
-// MENU & SERVICE
-// ========================
-
-function showMenu(chatId) {
-  bot.sendMessage(chatId, "📋 *Menu Antrian*\nSilakan pilih menu:", {
-    parse_mode: "Markdown",
-    reply_markup: { keyboard: [["📝 Buat Antrian"], ["📊 Lihat Antrian"]], resize_keyboard: true }
-  });
-}
-
-function showService(chatId) {
-  bot.sendMessage(chatId, "🛠 Pilih *Jenis Layanan* :", {
-    parse_mode: "Markdown",
-    reply_markup: {
-      keyboard: [
-        ["📱 Telkomsel PraBayar"],
-        ["📞 Telkomsel Halo"],
-        ["📡 Telkomsel Orbit"],
-        ["🌐 IndiHome"],
-        ["🆓 by.U"]
-      ],
-      resize_keyboard: true
-    }
-  });
-}
-
-// ========================
-// TAMPILKAN ANTRIAN TERURUT
-// ========================
-
-async function showQueue(chatId) {
-  try {
-    const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${SHEET_NAME}!B2:H` });
-    const rows = res.data.values || [];
-    const today = getWITADate();
-    const todayRows = rows.filter(r => r[0] === today);
-
-    if(todayRows.length === 0){
-
-    let msg = `📭 *Belum ada antrian hari ini*\n`;
-    msg += `📅 ${today}\n\n`;
-    msg += `━━━━━━━━━━━━━━━\n`;
-    msg += `ℹ️ *Petunjuk:*\n`;
-    msg += `• Ketik */start* untuk kembali ke menu utama`;
-
-    bot.sendMessage(chatId,msg,{parse_mode:"Markdown"});
-
-    return;
-  }
-
-    // Urutkan berdasarkan nomor antrian Q001, Q002...
-    todayRows.sort((a, b) => {
-      const numA = parseInt(a[2].replace("Q", "")) || 0;
-      const numB = parseInt(b[2].replace("Q", "")) || 0;
-      return numA - numB;
-    });
-
-    let msg = `📊 *Daftar Antrian Hari Ini*\n`;
-    msg += `📅 ${today}\n\n`;
-    todayRows.forEach(r => { msg += `🎟 ${r[1]} - ${r[2]} (${r[4]})\n`; });
-    msg += `\n━━━━━━━━━━━━━━━\n`;
-    msg += `ℹ️ *Petunjuk:*\n`;
-    msg += `• Ketik */start* untuk kembali ke menu utama`;
-
-    bot.sendMessage(chatId, msg, { parse_mode: "Markdown" });
-
-  } catch (e) { console.error("Gagal menampilkan antrian:", e); }
-}
-
-// ========================
 // REKAP PROFESIONAL & BROADCAST TANPA PERSENTASE
 // ========================
 
-async function generateProfessionalReport() {
+async function generateReport(sheet, grapari) {
   try {
 
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!B2:H`
+      range: `${sheet}!B2:H`
     });
 
     const rows = res.data.values || [];
     const today = getWITADate();
 
-    const todayRows = rows.filter(r => r[0] === today);
+    const todayRows = rows.filter(r=>{
+    const t = (r[0] || "").toString().trim();
+    return t === today;
+    });
 
     if (todayRows.length === 0) {
-      return `📊 *REKAP ANTRIAN GRAPARI*
+      return `📊 *REKAP ANTRIAN*
+🏢 ${grapari}
 📅 ${today}
 
 Belum ada antrian hari ini.`;
@@ -333,7 +469,7 @@ Belum ada antrian hari ini.`;
 
     todayRows.forEach(r => {
 
-      const layanan = (r[4] || "").toLowerCase();
+      const layanan = (r[5] || "").toLowerCase();
 
       if (layanan.includes("prabayar")) stat.prabayar++;
       if (layanan.includes("halo")) stat.halo++;
@@ -347,6 +483,7 @@ Belum ada antrian hari ini.`;
 
     let msg = "";
     msg += `📊 *REKAP ANTRIAN GRAPARI*\n`;
+    msg += `🏢 ${grapari}\n`;
     msg += `📅 ${today}\n`;
     msg += `━━━━━━━━━━━━━━━━━━\n\n`;
 
@@ -356,8 +493,8 @@ Belum ada antrian hari ini.`;
     msg += "-----------------------------\n";
     msg += `📱 Telkomsel PraBayar : *${stat.prabayar}*\n`;
     msg += `📞 Telkomsel Halo : *${stat.halo}*\n`;
-    msg += `📡 Telkomsel Orbit : *${stat.indihome}*\n`;
-    msg += `🌐 IndiHome : *${stat.orbit}*\n`;
+    msg += `📡 Telkomsel Orbit : *${stat.orbit}*\n`;
+    msg += `🌐 IndiHome : *${stat.indihome}*\n`;
     msg += `🆓 by.U : *${stat.byu}*\n`;
     
     msg += `\n━━━━━━━━━━━━━━━━━━\n`;
@@ -373,42 +510,101 @@ Belum ada antrian hari ini.`;
 
   }
 }
-async function broadcastDailyReport() {
-  try {
-    const report = await generateProfessionalReport();
-    const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${USER_SHEET}!A2:A` });
-    const users = [...new Set((res.data.values || []).map(r => r[0]))];
-    for (const chatId of users) {
-      try { await bot.sendMessage(chatId, report, { parse_mode: "Markdown" }); }
-      catch (e) { console.log("Gagal kirim ke", chatId, e.response?.body || e.message); }
+async function broadcastDailyReport(){
+
+  const reportManado=await generateReport(SHEET_MANADO,"Grapari Manado");
+  const reportTernate=await generateReport(SHEET_TERNATE,"Grapari Ternate");
+
+  const res=await sheets.spreadsheets.values.get({
+    spreadsheetId:SPREADSHEET_ID,
+    range:`${USER_SHEET}!A2:B`
+  });
+
+  const users=res.data.values||[];
+
+  for(const u of users){
+
+    const chatId=u[0];
+    const grapari=u[1];
+
+    try{
+
+      if(grapari==="Grapari Manado"){
+        await bot.sendMessage(chatId,reportManado,{parse_mode:"Markdown"});
+      }
+
+      if(grapari==="Grapari Ternate"){
+        await bot.sendMessage(chatId,reportTernate,{parse_mode:"Markdown"});
+      }
+
+    }catch(e){
+      console.log("Gagal kirim",chatId);
     }
-  } catch (e) { console.error("Gagal broadcast:", e); }
+  }
 }
 
-// ========================
-// SCHEDULER OTOMATIS
-// ========================
+// ================= REKAP ADMIN =================
+
+bot.onText(/\/rekap/, async (msg) => {
+
+  const chatId = msg.chat.id;
+
+  if (!ADMIN_IDS.includes(chatId)) {
+    bot.sendMessage(chatId, "❌ Tidak memiliki akses");
+    return;
+  }
+
+  try {
+
+    const reportManado = await generateReport(SHEET_MANADO, "Grapari Manado");
+    const reportTernate = await generateReport(SHEET_TERNATE, "Grapari Ternate");
+
+    const finalReport =
+      reportManado +
+      "\n\n━━━━━━━━━━━━━━━━\n\n" +
+      reportTernate;
+
+    bot.sendMessage(chatId, finalReport, { parse_mode: "Markdown" });
+
+  } catch (err) {
+
+    console.log("Rekap error:", err);
+    bot.sendMessage(chatId, "❌ Terjadi kesalahan saat membuat rekap.");
+
+  }
+
+});
+
+// ================= SCHEDULER =================
 
 setInterval(async () => {
-  const today = getWITADate();
-  checkDailyReset();
 
-  const now = new Date().toLocaleString("en-US", { timeZone: "Asia/Makassar" });
+  const now = new Date().toLocaleString("en-US", {
+    timeZone: "Asia/Makassar"
+  });
+
   const date = new Date(now);
+
   const day = date.getDay();
   const hour = date.getHours();
   const minute = date.getMinutes();
 
-  // Senin-Jumat 17:05
+  const today = getWITADate();
+
+  // Senin - Jumat 17:05
   if (day >= 1 && day <= 5 && hour === 17 && minute === 5 && lastReportDate !== today) {
+
     await broadcastDailyReport();
     lastReportDate = today;
+
   }
 
   // Sabtu 12:05
   if (day === 6 && hour === 12 && minute === 5 && lastReportDate !== today) {
+
     await broadcastDailyReport();
     lastReportDate = today;
+
   }
 
 }, 60000);

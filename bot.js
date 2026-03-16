@@ -20,7 +20,7 @@ const ADMIN_IDS = [816293780];
 // ================= GOOGLE =================
 
 const auth = new google.auth.GoogleAuth({
-  keyFile: "credentials.json",
+  credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
   scopes: ["https://www.googleapis.com/auth/spreadsheets"]
 });
 

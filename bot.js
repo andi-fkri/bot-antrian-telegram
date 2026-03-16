@@ -73,24 +73,29 @@ function checkDailyReset() {
 
 // ================= USER =================
 
-async function saveUser(chatId, grapari) {
+async function saveUser(msg, grapari) {
+
+  const chatId = msg.chat.id;
+  const username = msg.from.username || "-";
+  const nama = msg.from.first_name || "-";
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${USER_SHEET}!A2:B`
+    range: `${USER_SHEET}!A2:A`
   });
 
   const rows = res.data.values || [];
-
-  const exist=rows.find(r=>r[0]==chatId);
+  const exist = rows.find(r => r[0] == chatId);
 
   if(!exist){
 
     await sheets.spreadsheets.values.append({
-      spreadsheetId:SPREADSHEET_ID,
-      range:USER_SHEET,
-      valueInputOption:"USER_ENTERED",
-      requestBody:{values:[[chatId,grapari]]}
+      spreadsheetId: SPREADSHEET_ID,
+      range: USER_SHEET,
+      valueInputOption: "USER_ENTERED",
+      requestBody:{
+        values:[[chatId, username, nama, grapari]]
+      }
     });
 
   }
@@ -133,7 +138,7 @@ bot.on("message", async (msg) => {
 
   if (step === "grapari") {
     userData[chatId] = { grapari:text };
-    await saveUser(chatId,text);
+    await saveUser(msg,text);
     userStep[chatId] = "nama";
     bot.sendMessage(chatId,"👤 Masukkan *Nama Pelanggan* :",{parse_mode:"Markdown"});
     return;

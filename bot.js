@@ -530,7 +530,7 @@ async function broadcastDailyReport(){
 
   const res=await sheets.spreadsheets.values.get({
     spreadsheetId:SPREADSHEET_ID,
-    range:`${USER_SHEET}!A2:B`
+    range:`${USER_SHEET}!A2:D`
   });
 
   const users=res.data.values||[];
@@ -538,7 +538,7 @@ async function broadcastDailyReport(){
   for(const u of users){
 
     const chatId=u[0];
-    const grapari=u[1];
+    const grapari=u[3];
 
     try{
 
@@ -652,7 +652,7 @@ setInterval(async () => {
   const today = getWITADate();
 
   // Senin - Jumat 17:05
-  if (day >= 1 && day <= 5 && hour === 18 && minute === 6 && lastReportDate !== today) {
+  if (day >= 1 && day <= 5 && hour === 18 && minute === 15 && lastReportDate !== today) {
 
     await broadcastDailyReport();
     lastReportDate = today;

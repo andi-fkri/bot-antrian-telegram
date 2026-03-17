@@ -197,9 +197,14 @@ bot.on("message", async (msg) => {
 
 function getSheet(grapari){
 
-  if(grapari === "Grapari Manado") return SHEET_MANADO;
-  if(grapari === "Grapari Ternate") return SHEET_TERNATE;
+  if(!grapari) return null;
 
+  grapari = grapari.trim();
+
+  if(grapari.includes("Manado")) return SHEET_MANADO;
+  if(grapari.includes("Ternate")) return SHEET_TERNATE;
+
+  return null;
 }
 
 // ================= PREFIX =================
@@ -216,6 +221,9 @@ function getPrefix(grapari){
 async function generateQueueNumber(grapari){
 
   const sheet = getSheet(grapari);
+    if(!sheet){
+      throw new Error("Sheet tidak ditemukan untuk Grapari: "+grapari);
+    }
   const prefix = getPrefix(grapari);
   const today = getWITADate();
 
@@ -546,6 +554,53 @@ async function broadcastDailyReport(){
       console.log("Gagal kirim",chatId);
     }
   }
+}
+
+
+// ========================
+// BROADCAST KE SEMUA USER
+// ========================
+
+async function broadcastToAll(message){
+
+  try{
+
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${USER_SHEET}!A2:A`
+    });
+
+    const users = res.data.values || [];
+
+    if(users.length === 0){
+      console.log("Tidak ada user untuk broadcast");
+      return;
+    }
+
+    for(const u of users){
+
+      const chatId = u[0];
+
+      try{
+
+        await bot.sendMessage(chatId, message, {
+          parse_mode:"Markdown"
+        });
+
+      }catch(err){
+
+        console.log("Gagal kirim ke:", chatId);
+
+      }
+
+    }
+
+  }catch(err){
+
+    console.log("Broadcast error:", err);
+
+  }
+
 }
 
 // ================= REKAP ADMIN =================

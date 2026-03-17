@@ -652,7 +652,7 @@ setInterval(async () => {
   const today = getWITADate();
 
   // Senin - Jumat 17:05
-  if (day >= 1 && day <= 5 && hour === 17 && minute === 5 && lastReportDate !== today) {
+  if (day >= 1 && day <= 5 && hour === 18 && minute === 6 && lastReportDate !== today) {
 
     await broadcastDailyReport();
     lastReportDate = today;
